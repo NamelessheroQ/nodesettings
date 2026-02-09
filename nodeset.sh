@@ -16,11 +16,9 @@ timedatectl set-timezone Europe/Moscow
 apt update && apt upgrade -y
 
 # --- Packages ---
-apt install -y \
-  curl wget unzip htop git ufw \
-  iptables-persistent net-tools
+apt install -y curl wget unzip htop git ufw net-tools
 
-# --- Disable unused services ---
+# --- Disable unused ---
 systemctl disable --now snapd || true
 systemctl disable --now firewalld || true
 
@@ -60,15 +58,13 @@ cat << 'EOF' >> /etc/security/limits.conf
 * hard nofile 1048576
 EOF
 
-# --- Anti-abuse iptables (ONLY extras) ---
-iptables -A INPUT -p tcp --syn --dport 443 \
+# --- Anti-abuse iptables (UFW-safe) ---
+iptables -I INPUT -p tcp --syn --dport 443 \
   -m connlimit --connlimit-above 50 -j DROP
 
-iptables -A INPUT -p icmp --icmp-type echo-request \
+iptables -I INPUT -p icmp --icmp-type echo-request \
   -m limit --limit 1/s -j ACCEPT
-iptables -A INPUT -p icmp --icmp-type echo-request -j DROP
-
-netfilter-persistent save
+iptables -I INPUT -p icmp --icmp-type echo-request -j DROP
 
 echo "=== DEPLOY FINISHED ==="
 echo "➡️ Reboot recommended: reboot"
