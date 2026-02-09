@@ -58,6 +58,20 @@ cat << 'EOF' >> /etc/security/limits.conf
 * hard nofile 1048576
 EOF
 
+# --- Anti-torrent (TCP + UDP) ---
+# TCP: BitTorrent protocol already blocked in RemnaWave, но блокируем все high ports
+iptables -A INPUT -p tcp --dport 1024:65535 -m connlimit --connlimit-above 50 -j DROP
+iptables -A FORWARD -p tcp --dport 1024:65535 -m connlimit --connlimit-above 50 -j DROP
+
+# UDP: полностью запрещаем (DHT, uTP)
+iptables -A INPUT -p udp -j DROP
+iptables -A FORWARD -p udp -j DROP
+
+# ICMP лимит
+iptables -A INPUT -p icmp --icmp-type echo-request -m limit --limit 1/s -j ACCEPT
+iptables -A INPUT -p icmp --icmp-type echo-request -j DROP
+
+
 # --- Anti-abuse iptables (UFW-safe) ---
 iptables -I INPUT -p tcp --syn --dport 443 \
   -m connlimit --connlimit-above 50 -j DROP
