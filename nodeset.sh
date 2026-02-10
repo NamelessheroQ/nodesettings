@@ -66,5 +66,22 @@ iptables -I INPUT -p icmp --icmp-type echo-request \
   -m limit --limit 1/s -j ACCEPT
 iptables -I INPUT -p icmp --icmp-type echo-request -j DROP
 
+echo "[+] Creating log directory for Xray / RemnaWave"
+
+sudo mkdir -p /var/log/remnanode
+
+# создаём лог-файлы
+sudo touch /var/log/remnanode/access.log
+sudo touch /var/log/remnanode/error.log
+
+# права — под root (Xray запускается от root)
+sudo chown root:root /var/log/remnanode/*.log
+sudo chmod 644 /var/log/remnanode/*.log
+
+# на всякий случай права на директорию
+sudo chown root:root /var/log/remnanode
+sudo chmod 755 /var/log/remnanode
+
+
 echo "=== DEPLOY FINISHED ==="
 echo "➡️ Reboot recommended: reboot"
