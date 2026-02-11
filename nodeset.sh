@@ -63,9 +63,8 @@ if ! grep -q "source-quench -j DROP" /etc/ufw/before.rules; then
     sed -i '/-A ufw-before-input -p icmp --icmp-type echo-request -j DROP/a -A ufw-before-input -p icmp --icmp-type source-quench -j DROP' /etc/ufw/before.rules
 fi
 
-# Применяем изменения
-ufw disable
-ufw enable
+ufw --force disable
+ufw --force enable
 
 echo "[+] ICMP hardening applied"
 
