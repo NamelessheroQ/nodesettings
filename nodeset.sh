@@ -30,10 +30,6 @@ ufw allow OpenSSH
 ufw allow 443/tcp
 ufw allow 2222/tcp
 
-# Optional: lightweight rate-limits
-ufw limit OpenSSH
-ufw limit 443/tcp
-
 ufw --force enable
 
 echo "[+] Firewall configured safely"
