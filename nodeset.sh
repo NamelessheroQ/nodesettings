@@ -22,9 +22,7 @@ apt install -y curl wget unzip htop git ufw net-tools
 systemctl disable --now snapd || true
 systemctl disable --now firewalld || true
 
-# --- UFW firewall (safe for Windows VPN) ---
-ufw --force reset
-
+# --- UFW firewall ---
 ufw default deny incoming
 ufw default allow outgoing
 
