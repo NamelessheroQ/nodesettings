@@ -18,11 +18,13 @@ apt update && apt upgrade -y
 # --- Packages ---
 apt install -y curl wget unzip htop git ufw net-tools
 
-# --- Disable unused ---
+# --- Disable unused services ---
 systemctl disable --now snapd || true
 systemctl disable --now firewalld || true
 
-# --- UFW firewall ---
+# --- UFW firewall (safe for Windows VPN) ---
+ufw --force reset
+
 ufw default deny incoming
 ufw default allow outgoing
 
@@ -30,39 +32,13 @@ ufw allow OpenSSH
 ufw allow 443/tcp
 ufw allow 2222/tcp
 
-echo "[+] Checking UFW ICMP patch"
+# Optional: lightweight rate-limits
+ufw limit OpenSSH
+ufw limit 443/tcp
 
-if [ -f /etc/ufw/before.rules.bak ]; then
-    echo "[!] Backup already exists. Skipping ICMP modification."
-else
-    echo "[+] Creating backup and applying ICMP hardening"
+ufw --force enable
 
-    cp /etc/ufw/before.rules /etc/ufw/before.rules.bak
-
-    # --- INPUT BLOCK ---
-    sed -i '/# ok icmp codes for INPUT/,/# ok icmp code for FORWARD/ {
-        s/-A ufw-before-input -p icmp --icmp-type destination-unreachable -j ACCEPT/-A ufw-before-input -p icmp --icmp-type destination-unreachable -j DROP/
-        s/-A ufw-before-input -p icmp --icmp-type time-exceeded -j ACCEPT/-A ufw-before-input -p icmp --icmp-type time-exceeded -j DROP/
-        s/-A ufw-before-input -p icmp --icmp-type parameter-problem -j ACCEPT/-A ufw-before-input -p icmp --icmp-type parameter-problem -j DROP/
-        s/-A ufw-before-input -p icmp --icmp-type echo-request -j ACCEPT/-A ufw-before-input -p icmp --icmp-type echo-request -j DROP/
-    }' /etc/ufw/before.rules
-
-    # --- FORWARD BLOCK ---
-    sed -i '/# ok icmp code for FORWARD/,/COMMIT/ {
-        s/-A ufw-before-forward -p icmp --icmp-type destination-unreachable -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type destination-unreachable -j DROP/
-        s/-A ufw-before-forward -p icmp --icmp-type time-exceeded -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type time-exceeded -j DROP/
-        s/-A ufw-before-forward -p icmp --icmp-type parameter-problem -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type parameter-problem -j DROP/
-        s/-A ufw-before-forward -p icmp --icmp-type echo-request -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type echo-request -j DROP/
-    }' /etc/ufw/before.rules
-
-    # Добавляем source-quench только если его нет
-    if ! grep -q "source-quench -j DROP" /etc/ufw/before.rules; then
-        sed -i '/-A ufw-before-forward -p icmp --icmp-type echo-request -j DROP/a -A ufw-before-forward -p icmp --icmp-type source-quench -j DROP' /etc/ufw/before.rules
-    fi
-
-    ufw disable && ufw enable
-    echo "[+] ICMP hardening applied"
-fi
+echo "[+] Firewall configured safely"
 
 # --- sysctl VPN optimization ---
 cat << 'EOF' > /etc/sysctl.d/99-vpn.conf
@@ -91,30 +67,20 @@ cat << 'EOF' >> /etc/security/limits.conf
 * hard nofile 1048576
 EOF
 
-# --- Anti-abuse iptables (UFW-safe) ---
-iptables -I INPUT -p tcp --syn --dport 443 \
-  -m connlimit --connlimit-above 50 -j DROP
+# --- Create log directory for Xray / RemnaWave ---
+mkdir -p /var/log/remnanode
 
-iptables -I INPUT -p icmp --icmp-type echo-request \
-  -m limit --limit 1/s -j ACCEPT
-iptables -I INPUT -p icmp --icmp-type echo-request -j DROP
+# Create log files
+touch /var/log/remnanode/access.log
+touch /var/log/remnanode/error.log
 
-echo "[+] Creating log directory for Xray / RemnaWave"
+# Set permissions
+chown root:root /var/log/remnanode/*.log
+chmod 644 /var/log/remnanode/*.log
+chown root:root /var/log/remnanode
+chmod 755 /var/log/remnanode
 
-sudo mkdir -p /var/log/remnanode
-
-# создаём лог-файлы
-sudo touch /var/log/remnanode/access.log
-sudo touch /var/log/remnanode/error.log
-
-# права — под root (Xray запускается от root)
-sudo chown root:root /var/log/remnanode/*.log
-sudo chmod 644 /var/log/remnanode/*.log
-
-# на всякий случай права на директорию
-sudo chown root:root /var/log/remnanode
-sudo chmod 755 /var/log/remnanode
-
+echo "[+] Log directory created"
 
 echo "=== DEPLOY FINISHED ==="
 echo "➡️ Reboot recommended: reboot"
