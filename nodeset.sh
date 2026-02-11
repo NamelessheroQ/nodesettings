@@ -30,42 +30,44 @@ ufw allow OpenSSH
 ufw allow 443/tcp
 ufw allow 2222/tcp
 
-echo "[+] Checking UFW ICMP patch"
-
-if [ -f /etc/ufw/before.rules.bak ]; then
-    echo "[!] Backup already exists. Skipping ICMP modification."
-else
-    echo "[+] Creating backup and applying ICMP hardening"
-
-    cp /etc/ufw/before.rules /etc/ufw/before.rules.bak
-
-    # --- INPUT BLOCK ---
-    sed -i '/# ok icmp codes for INPUT/,/# ok icmp code for FORWARD/ {
-        s/-A ufw-before-input -p icmp --icmp-type destination-unreachable -j ACCEPT/-A ufw-before-input -p icmp --icmp-type destination-unreachable -j DROP/
-        s/-A ufw-before-input -p icmp --icmp-type time-exceeded -j ACCEPT/-A ufw-before-input -p icmp --icmp-type time-exceeded -j DROP/
-        s/-A ufw-before-input -p icmp --icmp-type parameter-problem -j ACCEPT/-A ufw-before-input -p icmp --icmp-type parameter-problem -j DROP/
-        s/-A ufw-before-input -p icmp --icmp-type echo-request -j ACCEPT/-A ufw-before-input -p icmp --icmp-type echo-request -j DROP/
-    }' /etc/ufw/before.rules
-
-    # --- FORWARD BLOCK ---
-    sed -i '/# ok icmp code for FORWARD/,/COMMIT/ {
-        s/-A ufw-before-forward -p icmp --icmp-type destination-unreachable -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type destination-unreachable -j DROP/
-        s/-A ufw-before-forward -p icmp --icmp-type time-exceeded -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type time-exceeded -j DROP/
-        s/-A ufw-before-forward -p icmp --icmp-type parameter-problem -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type parameter-problem -j DROP/
-        s/-A ufw-before-forward -p icmp --icmp-type echo-request -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type echo-request -j DROP/
-    }' /etc/ufw/before.rules
-
-    # Добавляем source-quench только если его нет
-    if ! grep -q "source-quench -j DROP" /etc/ufw/before.rules; then
-        sed -i '/-A ufw-before-forward -p icmp --icmp-type echo-request -j DROP/a -A ufw-before-forward -p icmp --icmp-type source-quench -j DROP' /etc/ufw/before.rules
-    fi
-
-    echo "[+] ICMP hardening applied"
-fi
-
 ufw --force enable
 
-echo "[+] Firewall configured safely"
+echo "[+] Base firewall configured"
+
+# --- ICMP hardening (как делал вручную) ---
+echo "[+] Checking UFW ICMP patch"
+
+if [ ! -f /etc/ufw/before.rules.bak ]; then
+    echo "[+] Creating backup of UFW rules"
+    cp /etc/ufw/before.rules /etc/ufw/before.rules.bak
+fi
+
+# INPUT block
+sed -i '/# ok icmp codes for INPUT/,/# ok icmp code for FORWARD/ {
+    s/-A ufw-before-input -p icmp --icmp-type destination-unreachable -j ACCEPT/-A ufw-before-input -p icmp --icmp-type destination-unreachable -j DROP/
+    s/-A ufw-before-input -p icmp --icmp-type time-exceeded -j ACCEPT/-A ufw-before-input -p icmp --icmp-type time-exceeded -j DROP/
+    s/-A ufw-before-input -p icmp --icmp-type parameter-problem -j ACCEPT/-A ufw-before-input -p icmp --icmp-type parameter-problem -j DROP/
+    s/-A ufw-before-input -p icmp --icmp-type echo-request -j ACCEPT/-A ufw-before-input -p icmp --icmp-type echo-request -j DROP/
+}' /etc/ufw/before.rules
+
+# FORWARD block
+sed -i '/# ok icmp code for FORWARD/,/COMMIT/ {
+    s/-A ufw-before-forward -p icmp --icmp-type destination-unreachable -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type destination-unreachable -j DROP/
+    s/-A ufw-before-forward -p icmp --icmp-type time-exceeded -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type time-exceeded -j DROP/
+    s/-A ufw-before-forward -p icmp --icmp-type parameter-problem -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type parameter-problem -j DROP/
+    s/-A ufw-before-forward -p icmp --icmp-type echo-request -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type echo-request -j DROP/
+}' /etc/ufw/before.rules
+
+# Добавляем source-quench, если нет
+if ! grep -q "source-quench -j DROP" /etc/ufw/before.rules; then
+    sed -i '/-A ufw-before-input -p icmp --icmp-type echo-request -j DROP/a -A ufw-before-input -p icmp --icmp-type source-quench -j DROP' /etc/ufw/before.rules
+fi
+
+# Применяем изменения
+ufw disable
+ufw enable
+
+echo "[+] ICMP hardening applied"
 
 # --- sysctl VPN optimization ---
 cat << 'EOF' > /etc/sysctl.d/99-vpn.conf
