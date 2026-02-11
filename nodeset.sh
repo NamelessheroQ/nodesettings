@@ -58,11 +58,7 @@ sed -i '/# ok icmp code for FORWARD/,/COMMIT/ {
     s/-A ufw-before-forward -p icmp --icmp-type echo-request -j ACCEPT/-A ufw-before-forward -p icmp --icmp-type echo-request -j DROP/
 }' /etc/ufw/before.rules
 
-# Добавляем source-quench только если его нет, в конец файла
-if ! grep -q "source-quench -j DROP" /etc/ufw/before.rules; then
-    echo "-A ufw-before-input -p icmp --icmp-type source-quench -j DROP" >> /etc/ufw/before.rules
-fi
-
+sed -i '/-A ufw-before-forward -p icmp --icmp-type echo-request -j DROP/a -A ufw-before-forward -p icmp --icmp-type source-quench -j DROP' /etc/ufw/before.rules
 
 ufw --force disable
 ufw --force enable
