@@ -28,6 +28,7 @@ ufw default allow outgoing
 
 ufw allow OpenSSH
 ufw allow 443/tcp
+ufw allow 2222/tcp
 
 ufw --force enable
 
