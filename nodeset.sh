@@ -16,7 +16,7 @@ timedatectl set-timezone Europe/Moscow
 apt update && apt upgrade -y
 
 # --- Packages ---
-apt install -y curl wget unzip htop git ufw net-tools
+apt install -y curl wget unzip htop ufw net-tools
 
 # --- Disable unused services ---
 systemctl disable --now snapd || true
