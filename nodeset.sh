@@ -9,9 +9,6 @@ if [ "$EUID" -ne 0 ]; then
   exit 1
 fi
 
-# --- Timezone ---
-timedatectl set-timezone Europe/Moscow
-
 # --- Update system ---
 apt update && apt upgrade -y
 
