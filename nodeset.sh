@@ -1,32 +1,31 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
 
 echo "=== VPN NODE AUTO DEPLOY START ==="
 
-# --- root check ---
-if [ "$EUID" -ne 0 ]; then
-  echo "❌ Run as root"
+# --- Root check ---
+if [[ $EUID -ne 0 ]]; then
+  echo "Run as root"
   exit 1
 fi
 
-# --- Update system ---
-apt update && apt upgrade -y
+# --- System update ---
+apt update -y
+apt upgrade -y
 
 # --- Packages ---
 apt install -y curl wget unzip htop ufw net-tools
 
 # --- Disable unused services ---
-systemctl disable --now snapd || true
-systemctl disable --now firewalld || true
+systemctl disable --now snapd 2>/dev/null || true
+systemctl disable --now firewalld 2>/dev/null || true
 
 # --- UFW firewall ---
 ufw default deny incoming
 ufw default allow outgoing
-
 ufw allow OpenSSH
 ufw allow 443/tcp
 ufw allow 2222/tcp
-
 ufw --force enable
 
 echo "[+] Base firewall configured"
@@ -57,15 +56,25 @@ sed -i '/# ok icmp code for FORWARD/,/COMMIT/ {
 
 sed -i '/-A ufw-before-forward -p icmp --icmp-type echo-request -j DROP/a -A ufw-before-forward -p icmp --icmp-type source-quench -j DROP' /etc/ufw/before.rules
 
-ufw --force disable
-ufw --force enable
+ufw --force reload
 
 echo "[+] ICMP hardening applied"
 
+# Load BBR module
+if ! grep -q "^tcp_bbr" /etc/modules-load.d/modules.conf 2>/dev/null; then
+  echo "tcp_bbr" >> /etc/modules-load.d/modules.conf
+fi
+
+modprobe tcp_bbr 2>/dev/null || true
+
 # --- sysctl VPN optimization ---
 cat << 'EOF' > /etc/sysctl.d/99-vpn.conf
-net.core.default_qdisc=fq
-net.ipv4.tcp_congestion_control=bbr
+net.ipv6.conf.all.disable_ipv6 = 1
+net.ipv6.conf.default.disable_ipv6 = 1
+net.ipv6.conf.lo.disable_ipv6 = 1
+
+net.core.default_qdisc = fq
+net.ipv4.tcp_congestion_control = bbr
 
 net.core.netdev_max_backlog=250000
 net.core.somaxconn=65535
@@ -80,27 +89,25 @@ net.ipv4.ip_local_port_range=10000 65000
 fs.file-max=1048576
 EOF
 
-sysctl --system
-modprobe tcp_bbr || true
+sysctl --system > /dev/null
 
 # --- File limits ---
-cat << 'EOF' >> /etc/security/limits.conf
+if ! grep -q "1048576" /etc/security/limits.conf; then
+  cat >> /etc/security/limits.conf << 'EOF'
 * soft nofile 1048576
 * hard nofile 1048576
 EOF
+fi
 
-# --- Create log directory for Xray / RemnaWave ---
-mkdir -p /var/log/remnanode
+# --- Log directory ---
+LOG_DIR="/var/log/remnanode"
 
-# Create log files
-touch /var/log/remnanode/access.log
-touch /var/log/remnanode/error.log
+mkdir -p "$LOG_DIR"
+touch "$LOG_DIR/access.log" "$LOG_DIR/error.log"
 
-# Set permissions
-chown root:root /var/log/remnanode/*.log
-chmod 644 /var/log/remnanode/*.log
-chown root:root /var/log/remnanode
-chmod 755 /var/log/remnanode
+chown root:root "$LOG_DIR" "$LOG_DIR"/*.log
+chmod 755 "$LOG_DIR"
+chmod 644 "$LOG_DIR"/*.log
 
 echo "[+] Log directory created"
 
