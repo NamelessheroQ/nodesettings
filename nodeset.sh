@@ -112,4 +112,4 @@ chmod 644 "$LOG_DIR"/*.log
 echo "[+] Log directory created"
 
 echo "=== DEPLOY FINISHED ==="
-echo "➡️ Reboot recommended: reboot"
+echo "➡️ Reboot recommended"
