@@ -5,7 +5,7 @@ echo "=== VPN NODE AUTO DEPLOY START ==="
 
 # --- Root check ---
 if [[ $EUID -ne 0 ]]; then
-  echo "Run as root"
+  echo "Run as root ❌❌❌"
   exit 1
 fi
 
@@ -147,7 +147,6 @@ chmod 755 "$LOG_DIR"
 chmod 644 "$LOG_DIR"/*.log
 
 echo "[+] Log directory created"
-echo "=== DEPLOY FINISHED ==="
 
 # --- Applying BBR (external installer) --- #
 echo
