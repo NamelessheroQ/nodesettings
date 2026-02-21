@@ -189,6 +189,7 @@ if wget -q -O "$TMP_BBR_SCRIPT" "https://raw.githubusercontent.com/XDflight/bbr3
   echo "============================================"
   echo " ✨ Done."
   echo "============================================"
+  echo "============= Reboot recomended ============="
 else
   echo "❌ Failed to download BBR3 installer. Check your network or URL."
   exit 1
