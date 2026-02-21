@@ -69,32 +69,47 @@ modprobe tcp_bbr 2>/dev/null || true
 
 # --- sysctl VPN optimization ---
 cat << 'EOF' > /etc/sysctl.d/99-vpn.conf
-# Disable IPv6 (если не используешь)
+# --- # BBRv3 + FQ (ускорение TCP) ---
+# net.core.default_qdisc = fq
+net.ipv4.tcp_congestion_control = bbr
+
+# --- Оптимизация соединений (чтобы порты не заканчивались) ---
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.ip_local_port_range = 10000 65535
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_keepalive_time = 1200
+
+# --- Очереди и буферы (баланс между скоростью и потреблением RAM) ---
+net.core.somaxconn = 2048
+net.core.netdev_max_backlog = 2048
+net.ipv4.tcp_max_syn_backlog = 2048
+net.ipv4.tcp_max_tw_buckets = 10000
+
+# --- Память (чтобы сервер не зависал при нехватке RAM) ---
+vm.swappiness = 10
+vm.overcommit_memory = 0
+
+# --- Отключение IPv6 (если не используешь, лучше выключить) ---
 net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
 
-# BBR
-net.core.default_qdisc = fq
-net.ipv4.tcp_congestion_control = bbr
+# --- Запрет на "засыпание" скорости ---
+net.ipv4.tcp_slow_start_after_idle = 0
 
-# Queue tuning
-net.core.netdev_max_backlog = 250000
-net.core.somaxconn = 65535
-net.ipv4.tcp_max_syn_backlog = 65535
+# --- Борьба с "черными дырами" MTU ---
+net.ipv4.tcp_mtu_probing = 1
+net.ipv4.tcp_base_mss = 1024
 
-# TCP optimization
-net.ipv4.tcp_fin_timeout = 15
-net.ipv4.tcp_fastopen = 3
-net.ipv4.tcp_syncookies = 1
+# --- Принудительное включение масштабирования окон (обычно включено, но лучше зафиксировать) ---
+net.ipv4.tcp_window_scaling = 1
 
-# UNIVERSAL KEEPALIVE (ПК + мобильные)
-net.ipv4.tcp_keepalive_time = 60
-net.ipv4.tcp_keepalive_intvl = 15
-net.ipv4.tcp_keepalive_probes = 5
+# --- TCP Buffers (16-32 MB) | (разгон скорости) ---
+net.core.rmem_max = 16777216
+net.core.wmem_max = 16777216
+net.ipv4.tcp_rmem = 4096 87380 16777216
+net.ipv4.tcp_wmem = 4096 65536 16777216
 
-# Ports
-net.ipv4.ip_local_port_range = 10000 65000
 
 # File limits
 fs.file-max = 1048576
