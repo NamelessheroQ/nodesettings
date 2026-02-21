@@ -136,6 +136,19 @@ if ! grep -q "1048576" /etc/security/limits.conf; then
 EOF
 fi
 
+# --- Log directory ---
+LOG_DIR="/var/log/remnanode"
+
+mkdir -p "$LOG_DIR"
+touch "$LOG_DIR/access.log" "$LOG_DIR/error.log"
+
+chown root:root "$LOG_DIR" "$LOG_DIR"/*.log
+chmod 755 "$LOG_DIR"
+chmod 644 "$LOG_DIR"/*.log
+
+echo "[+] Log directory created"
+echo "=== DEPLOY FINISHED ==="
+
 # --- Applying BBR (external installer) --- #
 echo
 echo " ⚙ Installing BBR3 (external script)..."
@@ -181,18 +194,3 @@ else
   echo "❌ Failed to download BBR3 installer. Check your network or URL."
   exit 1
 fi
-
-# --- Log directory ---
-LOG_DIR="/var/log/remnanode"
-
-mkdir -p "$LOG_DIR"
-touch "$LOG_DIR/access.log" "$LOG_DIR/error.log"
-
-chown root:root "$LOG_DIR" "$LOG_DIR"/*.log
-chmod 755 "$LOG_DIR"
-chmod 644 "$LOG_DIR"/*.log
-
-echo "[+] Log directory created"
-
-echo "=== DEPLOY FINISHED ==="
-echo "➡️ Reboot recommended"
