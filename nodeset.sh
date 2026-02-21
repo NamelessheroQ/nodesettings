@@ -109,7 +109,7 @@ net.core.rmem_max = 16777216
 net.core.wmem_max = 16777216
 net.ipv4.tcp_rmem = 4096 87380 16777216
 net.ipv4.tcp_wmem = 4096 65536 16777216
-
+net.ipv4.tcp_low_latency = 1
 
 # File limits
 fs.file-max = 1048576
@@ -134,6 +134,52 @@ if ! grep -q "1048576" /etc/security/limits.conf; then
 * soft nofile 1048576
 * hard nofile 1048576
 EOF
+fi
+
+# --- Applying BBR (external installer) --- #
+echo
+echo " ⚙ Installing BBR3 (external script)..."
+echo "--------------------------------------------"
+
+TMP_BBR_SCRIPT="/tmp/install_bbr3.sh"
+
+if wget -q -O "$TMP_BBR_SCRIPT" "https://raw.githubusercontent.com/XDflight/bbr3-debs/refs/heads/build/install_latest.sh"; then
+  chmod +x "$TMP_BBR_SCRIPT"
+  bash "$TMP_BBR_SCRIPT"
+  echo
+  echo " 🔍 Final verification:"
+  echo "--------------------------------------------"
+  cc_value=$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo "unknown")
+  qdisc_value=$(sysctl -n net.core.default_qdisc 2>/dev/null || echo "unknown")
+  tfo_value=$(sysctl -n net.ipv4.tcp_fastopen 2>/dev/null || echo "unknown")
+  ecn_value=$(sysctl -n net.ipv4.tcp_ecn 2>/dev/null || echo "unknown")
+  krn_version=$(uname -r 2>/dev/null || echo "unknown")
+
+  rmem_max=$(sysctl -n net.core.rmem_max)
+  wmem_max=$(sysctl -n net.core.wmem_max)
+  tcp_rmem=$(sysctl -n net.ipv4.tcp_rmem)
+  tcp_wmem=$(sysctl -n net.ipv4.tcp_wmem)
+  low_lat=$(sysctl -n net.ipv4.tcp_low_latency)
+
+  echo " ✅ Congestion control: $cc_value"
+  echo " ✅ Queue discipline:   $qdisc_value"
+  echo " ✅ TCP Fast Open:      $tfo_value"
+  echo " ✅ ECN:                $ecn_value"
+  echo " ✅ Kernel version:     $krn_version"
+  echo
+  echo " 📦 Buffers:"
+  echo "     rmem_max:    $rmem_max"
+  echo "     wmem_max:    $wmem_max"
+  echo "     tcp_rmem:    $tcp_rmem"
+  echo "     tcp_wmem:    $tcp_wmem"
+  echo "     low_latency: $low_lat"
+  echo
+  echo "============================================"
+  echo " ✨ Done."
+  echo "============================================"
+else
+  echo "❌ Failed to download BBR3 installer. Check your network or URL."
+  exit 1
 fi
 
 # --- Log directory ---
