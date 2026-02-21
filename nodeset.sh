@@ -69,24 +69,35 @@ modprobe tcp_bbr 2>/dev/null || true
 
 # --- sysctl VPN optimization ---
 cat << 'EOF' > /etc/sysctl.d/99-vpn.conf
+# Disable IPv6 (если не используешь)
 net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
 
+# BBR
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 
-net.core.netdev_max_backlog=250000
-net.core.somaxconn=65535
-net.ipv4.tcp_max_syn_backlog=65535
+# Queue tuning
+net.core.netdev_max_backlog = 250000
+net.core.somaxconn = 65535
+net.ipv4.tcp_max_syn_backlog = 65535
 
-net.ipv4.tcp_fin_timeout=15
-net.ipv4.tcp_keepalive_time=600
-net.ipv4.tcp_fastopen=3
-net.ipv4.tcp_syncookies=1
+# TCP optimization
+net.ipv4.tcp_fin_timeout = 15
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_syncookies = 1
 
-net.ipv4.ip_local_port_range=10000 65000
-fs.file-max=1048576
+# UNIVERSAL KEEPALIVE (ПК + мобильные)
+net.ipv4.tcp_keepalive_time = 60
+net.ipv4.tcp_keepalive_intvl = 15
+net.ipv4.tcp_keepalive_probes = 5
+
+# Ports
+net.ipv4.ip_local_port_range = 10000 65000
+
+# File limits
+fs.file-max = 1048576
 EOF
 
 sysctl --system > /dev/null
