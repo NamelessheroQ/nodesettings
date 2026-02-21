@@ -115,6 +115,17 @@ net.ipv4.tcp_wmem = 4096 65536 16777216
 fs.file-max = 1048576
 EOF
 
+# --- Удаляем старые конфиги, чтобы не мешали нашим настройкам ---
+if [ -f /etc/sysctl.d/99-network-optimizations.conf ]; then
+    rm -f /etc/sysctl.d/99-network-optimizations.conf
+    echo "[+] Removed /etc/sysctl.d/99-network-optimizations.conf"
+fi
+
+if [ -f /etc/sysctl.d/99-sysctl.conf ]; then
+    rm -f /etc/sysctl.d/99-sysctl.conf
+    echo "[+] Removed /etc/sysctl.d/99-sysctl.conf"
+fi
+
 sysctl --system > /dev/null
 
 # --- File limits ---
