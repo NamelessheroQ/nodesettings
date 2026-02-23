@@ -99,7 +99,7 @@ net.ipv4.tcp_slow_start_after_idle = 0
 
 # --- Борьба с "черными дырами" MTU ---
 net.ipv4.tcp_mtu_probing = 1
-net.ipv4.tcp_base_mss = 1024
+net.ipv4.tcp_base_mss = 1460
 
 # --- Принудительное включение масштабирования окон (обычно включено, но лучше зафиксировать) ---
 net.ipv4.tcp_window_scaling = 1
@@ -114,17 +114,6 @@ net.ipv4.tcp_low_latency = 1
 # File limits
 fs.file-max = 1048576
 EOF
-
-# --- Удаляем старые конфиги, чтобы не мешали нашим настройкам ---
-if [ -f /etc/sysctl.d/99-network-optimizations.conf ]; then
-    rm -f /etc/sysctl.d/99-network-optimizations.conf
-    echo "[+] Removed /etc/sysctl.d/99-network-optimizations.conf"
-fi
-
-if [ -f /etc/sysctl.d/99-sysctl.conf ]; then
-    rm -f /etc/sysctl.d/99-sysctl.conf
-    echo "[+] Removed /etc/sysctl.d/99-sysctl.conf"
-fi
 
 sysctl --system > /dev/null
 
