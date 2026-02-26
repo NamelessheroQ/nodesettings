@@ -67,8 +67,10 @@ fi
 
 modprobe tcp_bbr 2>/dev/null || true
 
+mkdir -p /etc/sysctl.d
+
 # --- sysctl VPN optimization ---
-cat << 'EOF' > /etc/sysctl.d/99-vpn.conf
+cat << 'EOF' > /etc/sysctl.d/99-network-optimizations.conf
 # --- # BBRv3 + FQ (ускорение TCP) ---
 # net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
