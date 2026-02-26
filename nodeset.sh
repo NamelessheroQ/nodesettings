@@ -16,13 +16,7 @@ apt upgrade -y
 # --- Packages ---
 apt install -y curl wget unzip htop ufw net-tools
 
-# --- Disable unused services ---
-systemctl disable --now snapd 2>/dev/null || true
-systemctl disable --now firewalld 2>/dev/null || true
-
 # --- UFW firewall ---
-ufw default deny incoming
-ufw default allow outgoing
 ufw allow OpenSSH
 ufw allow 443/tcp
 ufw allow 2222/tcp
