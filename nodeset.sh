@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+SYSCTL_BIN="$(command -v sysctl || echo /sbin/sysctl)"
+
+if [[ ! -x "$SYSCTL_BIN" ]]; then
+  echo "sysctl binary not found, check procps installation"
+  exit 1
+fi
+
+
 echo "=== VPN NODE AUTO DEPLOY START ==="
 
 # --- Root check ---
@@ -76,8 +86,7 @@ net.ipv4.tcp_low_latency = 1
 fs.file-max = 1048576
 EOF
 
-apt install -y procps
-sysctl --system >/dev/null
+"$SYSCTL_BIN" --system >/dev/null
 
 # --- File limits ---
 if ! grep -q "1048576" /etc/security/limits.conf 2>/dev/null; then
@@ -104,17 +113,17 @@ if wget -q -O "$TMP_BBR_SCRIPT" "https://raw.githubusercontent.com/XDflight/bbr3
   echo " 🔍 Final verification:"
   echo "--------------------------------------------"
 
-  cc_value=$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo "unknown")
-  qdisc_value=$(sysctl -n net.core.default_qdisc 2>/dev/null || echo "unknown")
-  tfo_value=$(sysctl -n net.ipv4.tcp_fastopen 2>/dev/null || echo "unknown")
-  ecn_value=$(sysctl -n net.ipv4.tcp_ecn 2>/dev/null || echo "unknown")
+  cc_value=$($SYSCTL_BIN -n net.ipv4.tcp_congestion_control 2>/dev/null || echo "unknown")
+  qdisc_value=$($SYSCTL_BIN -n net.core.default_qdisc 2>/dev/null || echo "unknown")
+  tfo_value=$($SYSCTL_BIN -n net.ipv4.tcp_fastopen 2>/dev/null || echo "unknown")
+  ecn_value=$($SYSCTL_BIN -n net.ipv4.tcp_ecn 2>/dev/null || echo "unknown")
   krn_version=$(uname -r 2>/dev/null || echo "unknown")
 
-  rmem_max=$(sysctl -n net.core.rmem_max 2>/dev/null || echo "unknown")
-  wmem_max=$(sysctl -n net.core.wmem_max 2>/dev/null || echo "unknown")
-  tcp_rmem=$(sysctl -n net.ipv4.tcp_rmem 2>/dev/null || echo "unknown")
-  tcp_wmem=$(sysctl -n net.ipv4.tcp_wmem 2>/dev/null || echo "unknown")
-  low_lat=$(sysctl -n net.ipv4.tcp_low_latency 2>/dev/null || echo "unknown")
+  rmem_max=$($SYSCTL_BIN -n net.core.rmem_max 2>/dev/null || echo "unknown")
+  wmem_max=$($SYSCTL_BIN -n net.core.wmem_max 2>/dev/null || echo "unknown")
+  tcp_rmem=$($SYSCTL_BIN -n net.ipv4.tcp_rmem 2>/dev/null || echo "unknown")
+  tcp_wmem=$($SYSCTL_BIN -n net.ipv4.tcp_wmem 2>/dev/null || echo "unknown")
+  low_lat=$($SYSCTL_BIN -n net.ipv4.tcp_low_latency 2>/dev/null || echo "unknown")
 
   echo " ✅ Congestion control: $cc_value"
   echo " ✅ Queue discipline:   $qdisc_value"
