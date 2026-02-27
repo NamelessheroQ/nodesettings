@@ -16,12 +16,6 @@ apt upgrade -y
 # --- Packages ---
 apt install -y curl wget unzip htop ufw net-tools
 
-# --- UFW firewall ---
-ufw allow OpenSSH
-ufw allow 443/tcp
-ufw allow 2222/tcp
-ufw --force enable
-
 echo "[+] ICMP hardening applied"
 
 # Load BBR module
@@ -90,18 +84,6 @@ if ! grep -q "1048576" /etc/security/limits.conf; then
 * hard nofile 1048576
 EOF
 fi
-
-# --- Log directory ---
-LOG_DIR="/var/log/remnanode"
-
-mkdir -p "$LOG_DIR"
-touch "$LOG_DIR/access.log" "$LOG_DIR/error.log"
-
-chown root:root "$LOG_DIR" "$LOG_DIR"/*.log
-chmod 755 "$LOG_DIR"
-chmod 644 "$LOG_DIR"/*.log
-
-echo "[+] Log directory created"
 
 # --- Applying BBR (external installer) --- #
 echo
