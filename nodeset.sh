@@ -9,16 +9,13 @@ if [[ "$EUID" -ne 0 ]]; then
   exit 1
 fi
 
-# --- Non-interactive APT ---
-export DEBIAN_FRONTEND=noninteractive
-
 # --- System update ---
 apt update -y
 apt full-upgrade -y
 
 # --- Packages ---
 apt install -y --no-install-recommends \
-  curl wget unzip htop ufw net-tools ca-certificates
+  curl wget unzip htop ufw net-tools ca-certificates procps
 
 # --- Enable BBR module persistently ---
 mkdir -p /etc/modules-load.d
@@ -79,6 +76,7 @@ net.ipv4.tcp_low_latency = 1
 fs.file-max = 1048576
 EOF
 
+apt install -y procps
 sysctl --system >/dev/null
 
 # --- File limits ---
