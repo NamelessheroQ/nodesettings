@@ -4,67 +4,71 @@ set -euo pipefail
 echo "=== VPN NODE AUTO DEPLOY START ==="
 
 # --- Root check ---
-if [[ $EUID -ne 0 ]]; then
+if [[ "$EUID" -ne 0 ]]; then
   echo "Run as root ❌❌❌"
   exit 1
 fi
 
+# --- Non-interactive APT ---
+export DEBIAN_FRONTEND=noninteractive
+
 # --- System update ---
 apt update -y
-apt upgrade -y
+apt full-upgrade -y
 
 # --- Packages ---
-apt install -y curl wget unzip htop ufw net-tools
+apt install -y --no-install-recommends \
+  curl wget unzip htop ufw net-tools ca-certificates
 
-echo "[+] ICMP hardening applied"
+# --- Enable BBR module persistently ---
+mkdir -p /etc/modules-load.d
 
-# Load BBR module
-if ! grep -q "^tcp_bbr" /etc/modules-load.d/modules.conf 2>/dev/null; then
-  echo "tcp_bbr" >> /etc/modules-load.d/modules.conf
+if ! grep -q "^tcp_bbr" /etc/modules-load.d/bbr.conf 2>/dev/null; then
+  echo "tcp_bbr" >> /etc/modules-load.d/bbr.conf
 fi
 
 modprobe tcp_bbr 2>/dev/null || true
 
+# --- sysctl VPN optimization ---
 mkdir -p /etc/sysctl.d
 
-# --- sysctl VPN optimization ---
 cat << 'EOF' > /etc/sysctl.d/99-network-optimizations.conf
-# --- # BBRv3 + FQ (ускорение TCP) ---
+# BBR congestion control
 # net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 
-# --- Оптимизация соединений (чтобы порты не заканчивались) ---
+# Connection optimization
 net.ipv4.tcp_tw_reuse = 1
 net.ipv4.ip_local_port_range = 10000 65535
 net.ipv4.tcp_fin_timeout = 30
 net.ipv4.tcp_keepalive_time = 1200
 
-# --- Очереди и буферы (баланс между скоростью и потреблением RAM) ---
+# Queues and buffers
 net.core.somaxconn = 2048
 net.core.netdev_max_backlog = 2048
 net.ipv4.tcp_max_syn_backlog = 2048
 net.ipv4.tcp_max_tw_buckets = 10000
 
-# --- Память (чтобы сервер не зависал при нехватке RAM) ---
+# Memory
 vm.swappiness = 10
 vm.overcommit_memory = 0
 
-# --- Отключение IPv6 (если не используешь, лучше выключить) ---
+# Disable IPv6 (optional)
 net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
 
-# --- Запрет на "засыпание" скорости ---
+# No slow-start after idle
 net.ipv4.tcp_slow_start_after_idle = 0
 
-# --- Борьба с "черными дырами" MTU ---
+# MTU blackhole detection
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_base_mss = 1460
 
-# --- Принудительное включение масштабирования окон (обычно включено, но лучше зафиксировать) ---
+# Window scaling
 net.ipv4.tcp_window_scaling = 1
 
-# --- TCP Buffers (16-32 MB) | (разгон скорости) ---
+# TCP Buffers
 net.core.rmem_max = 16777216
 net.core.wmem_max = 16777216
 net.ipv4.tcp_rmem = 4096 87380 16777216
@@ -75,17 +79,19 @@ net.ipv4.tcp_low_latency = 1
 fs.file-max = 1048576
 EOF
 
-sysctl --system > /dev/null
+sysctl --system >/dev/null
 
 # --- File limits ---
-if ! grep -q "1048576" /etc/security/limits.conf; then
+if ! grep -q "1048576" /etc/security/limits.conf 2>/dev/null; then
   cat >> /etc/security/limits.conf << 'EOF'
 * soft nofile 1048576
 * hard nofile 1048576
+root soft nofile 1048576
+root hard nofile 1048576
 EOF
 fi
 
-# --- Applying BBR (external installer) --- #
+# --- Applying BBR (external installer) ---
 echo
 echo " ⚙ Installing BBR3 (external script)..."
 echo "--------------------------------------------"
@@ -95,20 +101,22 @@ TMP_BBR_SCRIPT="/tmp/install_bbr3.sh"
 if wget -q -O "$TMP_BBR_SCRIPT" "https://raw.githubusercontent.com/XDflight/bbr3-debs/refs/heads/build/install_latest.sh"; then
   chmod +x "$TMP_BBR_SCRIPT"
   bash "$TMP_BBR_SCRIPT"
+
   echo
   echo " 🔍 Final verification:"
   echo "--------------------------------------------"
+
   cc_value=$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo "unknown")
   qdisc_value=$(sysctl -n net.core.default_qdisc 2>/dev/null || echo "unknown")
   tfo_value=$(sysctl -n net.ipv4.tcp_fastopen 2>/dev/null || echo "unknown")
   ecn_value=$(sysctl -n net.ipv4.tcp_ecn 2>/dev/null || echo "unknown")
   krn_version=$(uname -r 2>/dev/null || echo "unknown")
 
-  rmem_max=$(sysctl -n net.core.rmem_max)
-  wmem_max=$(sysctl -n net.core.wmem_max)
-  tcp_rmem=$(sysctl -n net.ipv4.tcp_rmem)
-  tcp_wmem=$(sysctl -n net.ipv4.tcp_wmem)
-  low_lat=$(sysctl -n net.ipv4.tcp_low_latency)
+  rmem_max=$(sysctl -n net.core.rmem_max 2>/dev/null || echo "unknown")
+  wmem_max=$(sysctl -n net.core.wmem_max 2>/dev/null || echo "unknown")
+  tcp_rmem=$(sysctl -n net.ipv4.tcp_rmem 2>/dev/null || echo "unknown")
+  tcp_wmem=$(sysctl -n net.ipv4.tcp_wmem 2>/dev/null || echo "unknown")
+  low_lat=$(sysctl -n net.ipv4.tcp_low_latency 2>/dev/null || echo "unknown")
 
   echo " ✅ Congestion control: $cc_value"
   echo " ✅ Queue discipline:   $qdisc_value"
@@ -126,7 +134,7 @@ if wget -q -O "$TMP_BBR_SCRIPT" "https://raw.githubusercontent.com/XDflight/bbr3
   echo "============================================"
   echo " ✨ Done."
   echo "============================================"
-  echo "============= Reboot recomended ============="
+  echo "============= Reboot recommended ============="
 else
   echo "❌ Failed to download BBR3 installer. Check your network or URL."
   exit 1
