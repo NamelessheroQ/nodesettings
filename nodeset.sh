@@ -41,7 +41,7 @@ mkdir -p /etc/sysctl.d
 
 cat << 'EOF' > /etc/sysctl.d/99-network-optimizations.conf
 # BBR congestion control
-# net.core.default_qdisc = fq
+net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 
 # Connection optimization
