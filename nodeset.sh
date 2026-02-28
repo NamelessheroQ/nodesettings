@@ -37,49 +37,34 @@ fi
 modprobe tcp_bbr 2>/dev/null || true
 
 cat << 'EOF' > /etc/sysctl.conf
-# BBR congestion control
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
-
-# Connection optimization
 net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_fastopen = 3
 net.ipv4.ip_local_port_range = 10000 65535
 net.ipv4.tcp_fin_timeout = 30
-net.ipv4.tcp_keepalive_time = 1200
-
-# Queues and buffers
-net.core.somaxconn = 2048
-net.core.netdev_max_backlog = 2048
-net.ipv4.tcp_max_syn_backlog = 2048
-net.ipv4.tcp_max_tw_buckets = 10000
-
-# Memory
+net.ipv4.tcp_keepalive_time = 600
+net.ipv4.tcp_keepalive_intvl = 60
+net.core.somaxconn = 4096
+net.core.netdev_max_backlog = 5000
+net.ipv4.tcp_max_syn_backlog = 8192
+net.ipv4.tcp_max_tw_buckets = 262144
 vm.swappiness = 10
+net.ipv4.tcp_syncookies = 1
 vm.overcommit_memory = 0
-
-# Disable IPv6 (optional)
 net.ipv6.conf.all.disable_ipv6 = 1
 net.ipv6.conf.default.disable_ipv6 = 1
 net.ipv6.conf.lo.disable_ipv6 = 1
-
-# No slow-start after idle
 net.ipv4.tcp_slow_start_after_idle = 0
-
-# MTU blackhole detection
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_base_mss = 1460
-
-# Window scaling
 net.ipv4.tcp_window_scaling = 1
-
-# TCP Buffers
 net.core.rmem_max = 16777216
 net.core.wmem_max = 16777216
 net.ipv4.tcp_rmem = 4096 87380 16777216
 net.ipv4.tcp_wmem = 4096 65536 16777216
 net.ipv4.tcp_low_latency = 1
-
-# File limits
+net.ipv4.tcp_keepalive_probes = 5
 fs.file-max = 1048576
 EOF
 
