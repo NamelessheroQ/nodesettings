@@ -36,10 +36,7 @@ fi
 
 modprobe tcp_bbr 2>/dev/null || true
 
-# --- sysctl VPN optimization ---
-mkdir -p /etc/sysctl.d
-
-cat << 'EOF' > /etc/sysctl.d/99-network-optimizations.conf
+cat << 'EOF' > /etc/sysctl.conf
 # BBR congestion control
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
@@ -86,7 +83,7 @@ net.ipv4.tcp_low_latency = 1
 fs.file-max = 1048576
 EOF
 
-"$SYSCTL_BIN" --system >/dev/null
+"$SYSCTL_BIN" sysctl -p
 
 # --- File limits ---
 if ! grep -q "1048576" /etc/security/limits.conf 2>/dev/null; then
