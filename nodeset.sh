@@ -11,23 +11,17 @@ if [[ ! -x "$SYSCTL_BIN" ]]; then
 fi
 
 
-echo "=== VPN NODE AUTO DEPLOY START ==="
-
-# --- Root check ---
 if [[ "$EUID" -ne 0 ]]; then
   echo "Run as root ❌❌❌"
   exit 1
 fi
 
-# --- System update ---
 apt update -y
 apt full-upgrade -y
 
-# --- Packages ---
 apt install -y --no-install-recommends \
   curl wget unzip htop ufw net-tools ca-certificates procps
 
-# --- Enable BBR module persistently ---
 mkdir -p /etc/modules-load.d
 
 if ! grep -q "^tcp_bbr" /etc/modules-load.d/bbr.conf 2>/dev/null; then
@@ -68,9 +62,6 @@ net.ipv4.tcp_keepalive_probes = 5
 fs.file-max = 1048576
 EOF
 
-"$SYSCTL_BIN" sysctl -p
-
-# --- File limits ---
 if ! grep -q "1048576" /etc/security/limits.conf 2>/dev/null; then
   cat >> /etc/security/limits.conf << 'EOF'
 * soft nofile 1048576
@@ -79,3 +70,5 @@ root soft nofile 1048576
 root hard nofile 1048576
 EOF
 fi
+
+"$SYSCTL_BIN" sysctl -p
