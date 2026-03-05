@@ -101,4 +101,4 @@ root hard nofile 1048576
 EOF
 fi
 
-"$SYSCTL_BIN" sysctl -p
+"$SYSCTL_BIN" -p
