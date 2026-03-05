@@ -5,9 +5,11 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 SYSCTL_BIN="$(command -v sysctl || echo /sbin/sysctl)"
 
-if [[ ! -x "$SYSCTL_BIN" ]]; then
-  echo "sysctl binary not found, check procps installation"
-  exit 1
+if [[ -x "$SYSCTL_BIN" ]]; then
+    "$SYSCTL_BIN" -p
+else
+    echo "Error: sysctl binary not found. Skipping sysctl settings."
+    exit 1
 fi
 
 
