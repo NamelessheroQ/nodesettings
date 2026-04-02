@@ -85,6 +85,8 @@ net.ipv4.ip_forward = 0
 net.core.default_qdisc=cake
 EOF
 
+sysctl -p /etc/sysctl.conf
+
 if ! grep -q "1048576" /etc/security/limits.conf 2>/dev/null; then
   cat >> /etc/security/limits.conf << 'EOF'
 * soft nofile 1048576
@@ -93,5 +95,3 @@ root soft nofile 1048576
 root hard nofile 1048576
 EOF
 fi
-
-sysctl -p
