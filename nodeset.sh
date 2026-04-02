@@ -12,7 +12,7 @@ apt update -y
 apt full-upgrade -y
 
 apt install -y --no-install-recommends \
-  curl wget unzip htop ufw net-tools ca-certificates procps
+  curl sudo wget unzip htop ufw net-tools ca-certificates procps
 
 mkdir -p /etc/modules-load.d
 
@@ -82,6 +82,7 @@ kernel.yama.ptrace_scope = 1
 kernel.randomize_va_space = 2
 fs.suid_dumpable = 0
 net.ipv4.ip_forward = 0
+net.core.default_qdisc=cake
 EOF
 
 if ! grep -q "1048576" /etc/security/limits.conf 2>/dev/null; then
