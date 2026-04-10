@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH="/usr/sbin:/sbin:$PATH"
 
 if [[ "$EUID" -ne 0 ]]; then
   echo "Run as root ❌❌❌"
