@@ -14,21 +14,24 @@ mkdir -p "${HTML_DIR}"
 
 read -r -p "Заменить текущую HTML-заглушку? [y/N]: " ANSWER
 
-if [[ ! "${ANSWER}" =~ ^[YyДд]$ ]]; then
+# Убираем пробелы, переводы строк и управляющие символы
+ANSWER="$(printf '%s' "${ANSWER}" | tr -d '[:space:]' | tr -cd '[:alnum:]')"
+
+# Разрешаем ввод вроде y, Y или случайный символ перед y
+if [[ "${ANSWER,,}" != *y* ]]; then
     echo "Изменение отменено."
     exit 0
 fi
 
 echo
 echo "Вставьте HTML-код."
-echo "Для завершения вставки на новой строке напишите:"
-echo "END_HTML"
+echo "После вставки нажмите Enter, затем Ctrl+D для завершения."
 echo
 
 TMP_FILE="$(mktemp)"
 
+# Читаем HTML до Ctrl+D
 while IFS= read -r line; do
-    [[ "${line}" == "END_HTML" ]] && break
     printf '%s\n' "${line}" >> "${TMP_FILE}"
 done
 
