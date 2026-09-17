@@ -3,5 +3,9 @@ curl -fsSL https://raw.githubusercontent.com/NamelessheroQ/nodesettings/main/nod
 ```
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NamelessheroQ/nodesettings/main/install-selfsteal.sh | bash
+curl -fsSL https://raw.githubusercontent.com/NamelessheroQ/nodesettings/main/install-selfsteal.sh \
+  -o install-selfsteal.sh
+
+chmod +x install-selfsteal.sh
+sudo ./install-selfsteal.sh
 ```
