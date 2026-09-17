@@ -10,21 +10,6 @@ if [[ "${EUID}" -ne 0 ]]; then
     exit 1
 fi
 
-mkdir -p "${HTML_DIR}"
-
-# read с "|| true" — иначе Ctrl+D убьёт скрипт из-за set -e
-read -r -p "Заменить текущую HTML-заглушку? [y/N]: " ANSWER || ANSWER=""
-
-# Простое сопоставление по шаблону, как в примере
-case "${ANSWER}" in
-    [Yy]*) ;;                                   # подтверждение — идём дальше
-    *)                                          # всё остальное (n, N, пусто, мусор)
-        echo "Изменение отменено."
-        exit 0
-        ;;
-esac
-
-echo
 echo "Вставьте HTML-код."
 echo "После вставки нажмите Enter, затем Ctrl+D для завершения."
 echo
@@ -32,15 +17,20 @@ echo
 TMP_FILE="$(mktemp)"
 trap 'rm -f "${TMP_FILE}"' EXIT
 
-# Читаем HTML до Ctrl+D. || true — чтобы Ctrl+D (EOF) не валил скрипт
+# Читаем всё до Ctrl+D (EOF). || true — чтобы EOF не валил скрипт из-за set -e
 while IFS= read -r line; do
     printf '%s\n' "${line}" >> "${TMP_FILE}"
 done || true
 
+# Если ничего не вставили — не перезаписываем существующий файл
+if [[ ! -s "${TMP_FILE}" ]]; then
+    echo
+    echo "Пустой ввод — файл не изменён."
+    exit 1
+fi
+
 mv "${TMP_FILE}" "${HTML_FILE}"
 
 echo
-echo "HTML-заглушка полностью заменена:"
-echo "${HTML_FILE}"
-echo
+echo "HTML-заглушка записана: ${HTML_FILE}"
 echo "Перезапуск Docker-контейнера не требуется."
