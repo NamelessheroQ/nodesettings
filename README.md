@@ -13,7 +13,7 @@ sudo ./install-selfsteal.sh
 
 ## Change selfsteal page
 ```bash
-curl -fsSL https://raw.githubusercontent.com/NamelessheroQ/nodesettings/main/install-selfsteal.sh \
+curl -fsSL https://raw.githubusercontent.com/NamelessheroQ/nodesettings/main/change-selfsteal-page.sh \
   -o change-selfsteal-page.sh
   
 chmod +x change-selfsteal-page.sh
