@@ -5,23 +5,21 @@ INSTALL_DIR="/opt/selfsteal"
 HTML_DIR="/opt/html"
 CONTAINER_NAME="caddy-remnawave"
 
-DOMAIN="${1:-}"
-PORT="${2:-9443}"
-
 if [[ "${EUID}" -ne 0 ]]; then
     echo "Запустите скрипт от root:"
-    echo "sudo $0 steel.domain.com 9443"
+    echo "sudo $0"
     exit 1
 fi
 
-if [[ -z "${DOMAIN}" ]]; then
+read -r -p "Введите домен-плейсхолдер: " DOMAIN
+
+while [[ -z "${DOMAIN}" ]]; do
+    echo "Домен не может быть пустым."
     read -r -p "Введите домен-плейсхолдер: " DOMAIN
-fi
+done
 
-if [[ -z "${DOMAIN}" ]]; then
-    echo "Ошибка: домен не указан."
-    exit 1
-fi
+read -r -p "Введите порт [9443]: " PORT
+PORT="${PORT:-9443}"
 
 if ! [[ "${PORT}" =~ ^[0-9]+$ ]] || (( PORT < 1 || PORT > 65535 )); then
     echo "Ошибка: порт должен быть числом от 1 до 65535."
