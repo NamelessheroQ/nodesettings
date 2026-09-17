@@ -26,20 +26,6 @@ if [[ ! "${ANSWER}" =~ ^[YyДд]$ ]]; then
     exit 0
 fi
 
-BACKUP_FILE="${HTML_FILE}.backup.$(date +%Y%m%d-%H%M%S)"
-cp -a "${HTML_FILE}" "${BACKUP_FILE}"
-
-echo
-echo "Резервная копия создана:"
-echo "${BACKUP_FILE}"
-echo
-echo "Откроется nano."
-echo "Вставьте HTML-код, затем сохраните:"
-echo "  Ctrl+O → Enter"
-echo "Выйдите:"
-echo "  Ctrl+X"
-echo
-
 nano "${HTML_FILE}"
 
 echo
