@@ -56,11 +56,6 @@ net.ipv4.tcp_slow_start_after_idle = 0
 net.ipv4.tcp_mtu_probing = 1
 net.ipv4.tcp_base_mss = 1460
 net.ipv4.tcp_window_scaling = 1
-net.core.rmem_max = 16777216
-net.core.wmem_max = 16777216
-net.ipv4.tcp_rmem = 4096 87380 16777216
-net.ipv4.tcp_wmem = 4096 65536 16777216
-net.ipv4.tcp_low_latency = 1
 net.ipv4.tcp_keepalive_probes = 5
 fs.file-max = 2097152
 net.ipv4.conf.all.send_redirects = 0
@@ -82,10 +77,9 @@ kernel.yama.ptrace_scope = 1
 kernel.randomize_va_space = 2
 fs.suid_dumpable = 0
 net.ipv4.ip_forward = 0
-net.core.default_qdisc=cake
 EOF
 
-sysctl -p /etc/sysctl.conf
+sysctl --system >/dev/null
 
 if ! grep -q "1048576" /etc/security/limits.conf 2>/dev/null; then
   cat >> /etc/security/limits.conf << 'EOF'
@@ -94,4 +88,26 @@ if ! grep -q "1048576" /etc/security/limits.conf 2>/dev/null; then
 root soft nofile 1048576
 root hard nofile 1048576
 EOF
+fi
+
+echo "⚙ Installing BBR3"
+
+TMP_BBR_SCRIPT="/tmp/install_bbr3.sh"
+
+if wget -q -O "$TMP_BBR_SCRIPT" "https://raw.githubusercontent.com/XDflight/bbr3-debs/refs/heads/build/install_latest.sh"; then
+  chmod +x "$TMP_BBR_SCRIPT"
+  bash "$TMP_BBR_SCRIPT"
+  cc_value=$(sysctl -n net.ipv4.tcp_congestion_control 2>/dev/null || echo "unknown")
+  qdisc_value=$(sysctl -n net.core.default_qdisc 2>/dev/null || echo "unknown")
+  tfo_value=$(sysctl -n net.ipv4.tcp_fastopen 2>/dev/null || echo "unknown")
+  ecn_value=$(sysctl -n net.ipv4.tcp_ecn 2>/dev/null || echo "unknown")
+  krn_version=$(uname -r 2>/dev/null || echo "unknown")
+  rmem_max=$(sysctl -n net.core.rmem_max)
+  wmem_max=$(sysctl -n net.core.wmem_max)
+  tcp_rmem=$(sysctl -n net.ipv4.tcp_rmem)
+  tcp_wmem=$(sysctl -n net.ipv4.tcp_wmem)
+  low_lat=$(sysctl -n net.ipv4.tcp_low_latency)
+else
+  echo "❌ Failed to download BBR3 installer. Check your network or URL."
+  exit 1
 fi
