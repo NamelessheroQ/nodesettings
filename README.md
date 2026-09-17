@@ -11,6 +11,11 @@ chmod +x install-selfsteal.sh
 sudo ./install-selfsteal.sh
 ```
 
+## Change selfsteal page
 ```bash
-nano /opt/html/index.html
+curl -fsSL https://raw.githubusercontent.com/NamelessheroQ/nodesettings/main/install-selfsteal.sh \
+  -o change-selfsteal-page.sh
+  
+chmod +x change-selfsteal-page.sh
+sudo ./change-selfsteal-page.sh
 ```
