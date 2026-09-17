@@ -59,7 +59,6 @@ net.ipv4.tcp_wmem = 4096 65536 33554432
 fs.file-max = 2097152
 
 # --- Memory ---
-vm.swappiness = 10
 vm.overcommit_memory = 0
 
 # ============================================================
