@@ -22,7 +22,9 @@ fi
 
 modprobe tcp_bbr 2>/dev/null || true
 
-cat << 'EOF' > /etc/sysctl.conf
+mkdir -p /etc/sysctl.d
+
+cat << 'EOF' > /etc/sysctl.d/99-network-optimizations.conf
 net.core.default_qdisc = fq
 net.ipv4.tcp_congestion_control = bbr
 net.ipv4.tcp_tw_reuse = 1
@@ -77,6 +79,11 @@ kernel.yama.ptrace_scope = 1
 kernel.randomize_va_space = 2
 fs.suid_dumpable = 0
 net.ipv4.ip_forward = 0
+net.core.rmem_max = 33554432
+net.core.wmem_max = 33554432
+net.ipv4.tcp_rmem = 4096 87380 33554432
+net.ipv4.tcp_wmem = 4096 65536 33554432
+net.ipv4.tcp_low_latency = 1
 EOF
 
 sysctl --system >/dev/null
