@@ -11,15 +11,15 @@ if [[ "${EUID}" -ne 0 ]]; then
     exit 1
 fi
 
-read -r -p "Введите домен-плейсхолдер: " DOMAIN
+read -r -p "Введите домен: " DOMAIN
 
 while [[ -z "${DOMAIN}" ]]; do
     echo "Домен не может быть пустым."
-    read -r -p "Введите домен-плейсхолдер: " DOMAIN
+    read -r -p "Введите домен: " DOMAIN
 done
 
 read -r -p "Введите порт [9443]: " PORT
-PORT="${PORT:-9443}"
+# PORT="${PORT:-9443}"
 
 if ! [[ "${PORT}" =~ ^[0-9]+$ ]] || (( PORT < 1 || PORT > 65535 )); then
     echo "Ошибка: порт должен быть числом от 1 до 65535."
