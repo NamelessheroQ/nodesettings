@@ -12,16 +12,17 @@ fi
 
 mkdir -p "${HTML_DIR}"
 
-read -r -p "Заменить текущую HTML-заглушку? [y/N]: " ANSWER
+# read с "|| true" — иначе Ctrl+D убьёт скрипт из-за set -e
+read -r -p "Заменить текущую HTML-заглушку? [y/N]: " ANSWER || ANSWER=""
 
-# Убираем пробелы, переводы строк и управляющие символы
-ANSWER="$(printf '%s' "${ANSWER}" | tr -d '[:space:]' | tr -cd '[:alnum:]')"
-
-# Разрешаем ввод вроде y, Y или случайный символ перед y
-if [[ "${ANSWER,,}" != *y* ]]; then
-    echo "Изменение отменено."
-    exit 0
-fi
+# Простое сопоставление по шаблону, как в примере
+case "${ANSWER}" in
+    [Yy]*) ;;                                   # подтверждение — идём дальше
+    *)                                          # всё остальное (n, N, пусто, мусор)
+        echo "Изменение отменено."
+        exit 0
+        ;;
+esac
 
 echo
 echo "Вставьте HTML-код."
@@ -29,11 +30,12 @@ echo "После вставки нажмите Enter, затем Ctrl+D для �
 echo
 
 TMP_FILE="$(mktemp)"
+trap 'rm -f "${TMP_FILE}"' EXIT
 
-# Читаем HTML до Ctrl+D
+# Читаем HTML до Ctrl+D. || true — чтобы Ctrl+D (EOF) не валил скрипт
 while IFS= read -r line; do
     printf '%s\n' "${line}" >> "${TMP_FILE}"
-done
+done || true
 
 mv "${TMP_FILE}" "${HTML_FILE}"
 
