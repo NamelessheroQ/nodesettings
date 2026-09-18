@@ -1,15 +1,45 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# --- Colors ---
+if command -v tput >/dev/null 2>&1 && tput setaf 1 >/dev/null 2>&1; then
+    RED=$(tput setaf 1)
+    GREEN=$(tput setaf 2)
+    YELLOW="$(tput bold)$(tput setaf 3)"
+    BLUE=$(tput setaf 4)
+    PURPLE=$(tput setaf 5)
+    CYAN=$(tput setaf 6)
+    BOLD=$(tput bold)
+    NC=$(tput sgr0)
+else
+    RED=$'\e[0;31m'
+    GREEN=$'\e[0;32m'
+    YELLOW=$'\e[1;33m'
+    BLUE=$'\e[0;34m'
+    PURPLE=$'\e[0;35m'
+    CYAN=$'\e[0;36m'
+    BOLD=$'\e[1m'
+    NC=$'\e[0m'
+fi
+
+# --- Logging helpers ---
+print_success() { printf '%s\n' "${GREEN}✓ $*${NC}"; }
+print_error()   { printf '%s\n' "${RED}✗ $*${NC}" >&2; }
+print_warning() { printf '%s\n' "${YELLOW}⚠ $*${NC}" >&2; }
+print_info()    { printf '%s\n' "${PURPLE}ℹ $*${NC}"; }
+
+# Цветное приглашение для read -p (без \n, без интерпретации % и \)
+prompt() { printf '%s' "${CYAN}$*${NC}"; }
+
+# Старый хелпер — оставим на всякий случай
+p() { printf '%s' "$1"; }
+
 INSTALL_DIR="/opt/selfsteal"
 HTML_DIR="/opt/html"
 CONTAINER_NAME="caddy-remnawave"
 DEFAULT_PORT=9443
 
-# Хелпер: вывод строки как есть, без перевода строки и без форматирования.
-# Аналог `printf '%s' "$1"`, но короче читается в read -p.
-p() { printf '%s' "$1"; }
-
+# --- Validators ---
 validate_domain() {
     local d="$1"
     [[ -n "$d" && ${#d} -le 253 ]] || return 1
@@ -20,44 +50,46 @@ validate_domain() {
 
 validate_port() {
     local p="$1"
-    # непусто
     [[ -n "$p" ]] || return 1
-    # только ASCII-цифры, ничего больше (ни букв, ни точек, ни пробелов)
     [[ "$p" =~ ^[0-9]+$ ]] || return 1
-    # на всякий случай явная проверка, что это чистая ASCII-строка
     LC_ALL=C grep -qP '^[\x30-\x39]+$' <<<"$p" || return 1
-    # числовой диапазон
     (( p >= 1 && p <= 65535 )) || return 1
     return 0
 }
 
+# --- Root check ---
 if [[ "${EUID}" -ne 0 ]]; then
-    echo "Запустите скрипт от root:"
-    echo "sudo $0"
+    print_error "Запустите скрипт от root:"
+    print_info  "sudo $0"
     exit 1
 fi
 
+# --- Domain ---
 while true; do
-    read -r -p "$(printf '%s' 'Введите домен: ')" DOMAIN
+    read -r -p "$(prompt 'Введите домен: ')" DOMAIN
     if validate_domain "$DOMAIN"; then
         break
     fi
-    echo "Ошибка: домен может содержать только латинские буквы, цифры, точки и дефисы."
-    echo "Русские буквы и другие символы недопустимы. Пример: de.wgvpn.fun"
+    print_error "Домен может содержать только латинские буквы, цифры, точки и дефисы."
+    print_info  "Русские буквы и другие символы недопустимы. Пример: de.wgvpn.fun"
 done
+print_success "Домен принят: ${DOMAIN}"
 
+# --- Port ---
 while true; do
-    read -r -p "$(printf '%s' "Введите порт [${DEFAULT_PORT}]: ")" PORT
+    read -r -p "$(prompt "Введите порт [${DEFAULT_PORT}]: ")" PORT
     PORT="${PORT:-$DEFAULT_PORT}"
     if validate_port "$PORT"; then
         break
     fi
-    echo "Ошибка: порт должен быть целым числом от 1 до 65535 (только цифры, без букв и пробелов)."
+    print_error "Порт должен быть целым числом от 1 до 65535 (только цифры, без букв и пробелов)."
 done
+print_success "Порт принят: ${PORT}"
 
+# --- Docker ---
 if ! command -v docker >/dev/null 2>&1; then
-    echo "Ошибка: Docker не установлен."
-    echo "Установите Docker и повторно запустите скрипт."
+    print_error "Docker не установлен."
+    print_info  "Установите Docker и повторно запустите скрипт."
     exit 1
 fi
 
@@ -66,25 +98,30 @@ if docker compose version >/dev/null 2>&1; then
 elif command -v docker-compose >/dev/null 2>&1; then
     COMPOSE_CMD=(docker-compose)
 else
-    echo "Ошибка: Docker Compose не найден."
+    print_error "Docker Compose не найден."
     exit 1
 fi
+print_success "Docker и Compose доступны."
 
+# --- Port busy check ---
 if ss -ltn "( sport = :80 or sport = :${PORT} )" 2>/dev/null | grep -q LISTEN; then
-    echo "Предупреждение: порт 80 или ${PORT} уже занят."
+    print_warning "Порт 80 или ${PORT} уже занят."
     ss -ltnp "( sport = :80 or sport = :${PORT} )" || true
-    read -r -p "$(p 'Продолжить? [y/N] ')" answer
-    [[ "${answer}" =~ ^[Yy]$ ]] || exit 1
+    read -r -p "$(prompt 'Продолжить? [y/N] ')" answer
+    [[ "${answer}" =~ ^[Yy]$ ]] || { print_info "Отменено пользователем."; exit 1; }
 fi
 
-echo "Создание каталогов..."
+# --- Create dirs ---
+print_info "Создание каталогов..."
 mkdir -p "${INSTALL_DIR}/logs" "${HTML_DIR}"
 
+# --- Write .env ---
 cat > "${INSTALL_DIR}/.env" <<EOF
 SELF_STEAL_DOMAIN=${DOMAIN}
 SELF_STEAL_PORT=${PORT}
 EOF
 
+# --- Write Caddyfile ---
 cat > "${INSTALL_DIR}/Caddyfile" <<'EOF'
 {
     https_port {$SELF_STEAL_PORT}
@@ -124,6 +161,7 @@ https://{$SELF_STEAL_DOMAIN} {
 }
 EOF
 
+# --- Write docker-compose.yml ---
 cat > "${INSTALL_DIR}/docker-compose.yml" <<'EOF'
 services:
   caddy:
@@ -145,6 +183,7 @@ volumes:
   caddy_config_selfsteal:
 EOF
 
+# --- Write index.html ---
 cat > "${HTML_DIR}/index.html" <<'EOF'
 <!doctype html>
 <html lang="en">
@@ -159,35 +198,51 @@ cat > "${HTML_DIR}/index.html" <<'EOF'
 EOF
 
 chmod 600 "${INSTALL_DIR}/.env"
+print_success "Файлы конфигурации созданы."
 
-echo "Проверка конфигурации Caddy..."
 cd "${INSTALL_DIR}"
 
-"${COMPOSE_CMD[@]}" config >/dev/null
+# --- Validate compose ---
+print_info "Проверка конфигурации Caddy..."
+if ! "${COMPOSE_CMD[@]}" config >/dev/null; then
+    print_error "Ошибка в docker-compose.yml или Caddyfile."
+    exit 1
+fi
+print_success "Конфигурация валидна."
 
-echo "Загрузка образа Caddy..."
-"${COMPOSE_CMD[@]}" pull
+# --- Pull image ---
+print_info "Загрузка образа Caddy..."
+if ! "${COMPOSE_CMD[@]}" pull; then
+    print_error "Не удалось загрузить образ Caddy."
+    exit 1
+fi
+print_success "Образ загружен."
 
-echo "Запуск контейнера..."
-"${COMPOSE_CMD[@]}" up -d
+# --- Up ---
+print_info "Запуск контейнера..."
+if ! "${COMPOSE_CMD[@]}" up -d; then
+    print_error "Не удалось запустить контейнер."
+    exit 1
+fi
 
 sleep 3
 
 echo
-echo "Статус контейнера:"
+print_info "Статус контейнера:"
 "${COMPOSE_CMD[@]}" ps
 
 echo
-echo "Последние логи:"
+print_info "Последние логи:"
 "${COMPOSE_CMD[@]}" logs --tail=30
 
+# --- Done ---
 echo
-echo "Установка завершена."
-echo "Каталог: ${INSTALL_DIR}"
-echo "Домен:   ${DOMAIN}"
-echo "Порт:    ${PORT}"
+print_success "Установка завершена."
+printf '  %-10s %s\n' "Каталог:" "${INSTALL_DIR}"
+printf '  %-10s %s\n' "Домен:"   "${DOMAIN}"
+printf '  %-10s %s\n' "Порт:"    "${PORT}"
 echo
-echo "Команды управления:"
-echo "  cd ${INSTALL_DIR} && docker compose logs -f"
-echo "  cd ${INSTALL_DIR} && docker compose restart"
-echo "  cd ${INSTALL_DIR} && docker compose down"
+print_info "Команды управления:"
+printf '  %s\n' "cd ${INSTALL_DIR} && docker compose logs -f"
+printf '  %s\n' "cd ${INSTALL_DIR} && docker compose restart"
+printf '  %s\n' "cd ${INSTALL_DIR} && docker compose down"
