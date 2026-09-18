@@ -5,21 +5,25 @@ INSTALL_DIR="/opt/selfsteal"
 HTML_DIR="/opt/html"
 CONTAINER_NAME="caddy-remnawave"
 
+# Хелпер: вывод строки как есть, без перевода строки и без форматирования.
+# Аналог `printf '%s' "$1"`, но короче читается в read -p.
+p() { printf '%s' "$1"; }
+
 if [[ "${EUID}" -ne 0 ]]; then
     echo "Запустите скрипт от root:"
     echo "sudo $0"
     exit 1
 fi
 
-read -r -p "Введите домен: " DOMAIN
+read -r -p "$(p 'Введите домен: ')" DOMAIN
 
 while [[ -z "${DOMAIN}" ]]; do
     echo "Домен не может быть пустым."
-    read -r -p "Введите домен: " DOMAIN
+    read -r -p "$(p 'Введите домен: ')" DOMAIN
 done
 
-read -r -p "Введите порт [9443]: " PORT
-# PORT="${PORT:-9443}"
+read -r -p "$(p 'Введите порт [9443]: ')" PORT
+PORT="${PORT:-9443}"
 
 if ! [[ "${PORT}" =~ ^[0-9]+$ ]] || (( PORT < 1 || PORT > 65535 )); then
     echo "Ошибка: порт должен быть числом от 1 до 65535."
@@ -44,7 +48,7 @@ fi
 if ss -ltn "( sport = :80 or sport = :${PORT} )" 2>/dev/null | grep -q LISTEN; then
     echo "Предупреждение: порт 80 или ${PORT} уже занят."
     ss -ltnp "( sport = :80 or sport = :${PORT} )" || true
-    read -r -p "Продолжить? [y/N] " answer
+    read -r -p "$(p 'Продолжить? [y/N] ')" answer
     [[ "${answer}" =~ ^[Yy]$ ]] || exit 1
 fi
 
