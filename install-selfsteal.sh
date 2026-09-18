@@ -4,10 +4,32 @@ set -Eeuo pipefail
 INSTALL_DIR="/opt/selfsteal"
 HTML_DIR="/opt/html"
 CONTAINER_NAME="caddy-remnawave"
+DEFAULT_PORT=9443
 
 # Хелпер: вывод строки как есть, без перевода строки и без форматирования.
 # Аналог `printf '%s' "$1"`, но короче читается в read -p.
 p() { printf '%s' "$1"; }
+
+validate_domain() {
+    local d="$1"
+    [[ -n "$d" && ${#d} -le 253 ]] || return 1
+    [[ "$d" =~ ^[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$ ]] || return 1
+    [[ "$d" == *.* ]] || return 1
+    return 0
+}
+
+validate_port() {
+    local p="$1"
+    # непусто
+    [[ -n "$p" ]] || return 1
+    # только ASCII-цифры, ничего больше (ни букв, ни точек, ни пробелов)
+    [[ "$p" =~ ^[0-9]+$ ]] || return 1
+    # на всякий случай явная проверка, что это чистая ASCII-строка
+    LC_ALL=C grep -qP '^[\x30-\x39]+$' <<<"$p" || return 1
+    # числовой диапазон
+    (( p >= 1 && p <= 65535 )) || return 1
+    return 0
+}
 
 if [[ "${EUID}" -ne 0 ]]; then
     echo "Запустите скрипт от root:"
@@ -15,20 +37,23 @@ if [[ "${EUID}" -ne 0 ]]; then
     exit 1
 fi
 
-read -r -p "$(p 'Введите домен: ')" DOMAIN
-
-while [[ -z "${DOMAIN}" ]]; do
-    echo "Домен не может быть пустым."
-    read -r -p "$(p 'Введите домен: ')" DOMAIN
+while true; do
+    read -r -p "$(printf '%s' 'Введите домен: ')" DOMAIN
+    if validate_domain "$DOMAIN"; then
+        break
+    fi
+    echo "Ошибка: домен может содержать только латинские буквы, цифры, точки и дефисы."
+    echo "Русские буквы и другие символы недопустимы. Пример: de.wgvpn.fun"
 done
 
-read -r -p "$(p 'Введите порт [9443]: ')" PORT
-PORT="${PORT:-9443}"
-
-if ! [[ "${PORT}" =~ ^[0-9]+$ ]] || (( PORT < 1 || PORT > 65535 )); then
-    echo "Ошибка: порт должен быть числом от 1 до 65535."
-    exit 1
-fi
+while true; do
+    read -r -p "$(printf '%s' "Введите порт [${DEFAULT_PORT}]: ")" PORT
+    PORT="${PORT:-$DEFAULT_PORT}"
+    if validate_port "$PORT"; then
+        break
+    fi
+    echo "Ошибка: порт должен быть целым числом от 1 до 65535 (только цифры, без букв и пробелов)."
+done
 
 if ! command -v docker >/dev/null 2>&1; then
     echo "Ошибка: Docker не установлен."
